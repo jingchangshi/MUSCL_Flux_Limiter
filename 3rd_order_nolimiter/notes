@@ -1,0 +1,2 @@
+Without the minmod limiter, Roe with or without the entropy fix blows up immediately in the 3rd order reconstruction.
+
