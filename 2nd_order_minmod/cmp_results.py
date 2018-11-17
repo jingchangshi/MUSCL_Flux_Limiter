@@ -36,19 +36,19 @@ roe9_noentrfix_rho_arr=data[:,1]
 roe9_noentrfix_u_arr=data[:,2]
 roe9_noentrfix_p_arr=data[:,3]
 
-data=np.loadtxt("AUSM_cfl0.1.dat")
+data=np.loadtxt("AUSMPlus_cfl0.1.dat")
 ausm1_xc_arr=data[:,0]
 ausm1_rho_arr=data[:,1]
 ausm1_u_arr=data[:,2]
 ausm1_p_arr=data[:,3]
 
-data=np.loadtxt("AUSM_cfl0.3.dat")
+data=np.loadtxt("AUSMPlus_cfl0.3.dat")
 ausm3_xc_arr=data[:,0]
 ausm3_rho_arr=data[:,1]
 ausm3_u_arr=data[:,2]
 ausm3_p_arr=data[:,3]
 
-data=np.loadtxt("AUSM_cfl0.9.dat")
+data=np.loadtxt("AUSMPlus_cfl0.9.dat")
 ausm9_xc_arr=data[:,0]
 ausm9_rho_arr=data[:,1]
 ausm9_u_arr=data[:,2]
@@ -63,9 +63,9 @@ roe9_noentrfix_label="Roe,NoEntropyFix,CFL=0.9"
 roe1_entrfix_label="Roe,EntropyFix,CFL=0.1"
 roe3_entrfix_label="Roe,EntropyFix,CFL=0.3"
 roe9_entrfix_label="Roe,EntropyFix,CFL=0.9"
-ausm1_label="AUSM,CFL=0.1"
-ausm3_label="AUSM,CFL=0.3"
-ausm9_label="AUSM,CFL=0.9"
+ausm1_label="AUSM+,CFL=0.1"
+ausm3_label="AUSM+,CFL=0.3"
+ausm9_label="AUSM+,CFL=0.9"
 
 ds_step=4
 ds_longshort_1=[ds_step*2,ds_step,ds_step*4,ds_step]

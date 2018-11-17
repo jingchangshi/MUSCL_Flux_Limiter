@@ -51,8 +51,8 @@ def IC(in_x_arr,in_type):
         exit("Not implemented!")
     return U_mat
 
-def RK1(in_U_mat,in_dt,in_dx,in_limiter_type):
-    dF_mat=Res(in_U_mat,in_dx,in_limiter_type)
+def RK1(in_U_mat,in_dt,in_dx,in_order,in_doLimiting,in_limiter_type,in_FluxType):
+    dF_mat=Res(in_U_mat,in_dx,in_order,in_doLimiting,in_limiter_type,in_FluxType)
     U_new_mat=in_U_mat-in_dt*dF_mat
     return U_new_mat
 
@@ -335,7 +335,7 @@ if __name__ == '__main__':
     plt.style.use('sjc')
     x_l_edge=-1.0
     x_h_edge=1.0
-    n_x_edge=100
+    n_x_edge=200
     n_x_edge+=1
     x_edge_arr=np.linspace(x_l_edge,x_h_edge,n_x_edge)
     x_cell_arr=(x_edge_arr[0:-1]+x_edge_arr[1:])/2.0
@@ -401,12 +401,16 @@ if __name__ == '__main__':
             plt.close(fig)
         i_iter+=1
         c_cell_arr=np.sqrt(GAMMA*V_cell_mat[:,2]/V_cell_mat[:,0])
-        dt=cfl*dx/np.max(np.abs(V_cell_mat[:,1])+c_cell_arr)
+        if(time<0.01):
+            cfl_used=0.1
+        else:
+            cfl_used=cfl
+        dt=cfl_used*dx/np.max(np.abs(V_cell_mat[:,1])+c_cell_arr)
         if(time+dt>end_time):
             dt=end_time-time
         time+=dt
-        #  U_cell_mat=RK1(U_cell_mat,dt,dx)
-        U_cell_mat=RK2(U_cell_mat,dt,dx,order,doLimiting,limiter_type,FluxType)
+        U_cell_mat=RK1(U_cell_mat,dt,dx,order,doLimiting,limiter_type,FluxType)
+        #  U_cell_mat=RK2(U_cell_mat,dt,dx,order,doLimiting,limiter_type,FluxType)
     V_cell_mat=U2V_mat(U_cell_mat)
     data_save_mat=np.zeros((x_cell_arr.size,4))
     data_save_mat[:,0]=x_cell_arr
@@ -416,9 +420,9 @@ if __name__ == '__main__':
     np.savetxt("solution.dat",data_save_mat,header="x,rho,u,p")
     fig=plt.figure()
     ax=fig.gca()
-    ax.plot(x_cell_arr,V_cell_mat[:,0],'o-',label=r"$\rho$")
-    ax.plot(x_cell_arr,V_cell_mat[:,1],'s-',label=r"$u$")
-    ax.plot(x_cell_arr,V_cell_mat[:,2],'v-',label=r"$p$")
+    ax.plot(x_cell_arr,V_cell_mat[:,0],'-',label=r"$\rho$")
+    ax.plot(x_cell_arr,V_cell_mat[:,1],'-',label=r"$u$")
+    ax.plot(x_cell_arr,V_cell_mat[:,2],'-',label=r"$p$")
     ax.set_xlim([-1.0,1.0])
     ax.set_ylim([-0.05,1.0])
     ax.set_xlabel("X")
