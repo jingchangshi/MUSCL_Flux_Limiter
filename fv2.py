@@ -56,17 +56,17 @@ def RK1(in_U_mat,in_dt,in_dx,in_limiter_type):
     U_new_mat=in_U_mat-in_dt*dF_mat
     return U_new_mat
 
-def RK2(in_U_mat,in_dt,in_dx,in_order,in_doLimiting,in_limiter_type,in_FluxType,in_isAUSMPlus):
+def RK2(in_U_mat,in_dt,in_dx,in_order,in_doLimiting,in_limiter_type,in_FluxType):
     from numpy import copy
     U_old_mat=copy(in_U_mat)
-    dF_mat=Res(in_U_mat,in_dx,in_order,in_doLimiting,in_limiter_type,in_FluxType,in_isAUSMPlus)
+    dF_mat=Res(in_U_mat,in_dx,in_order,in_doLimiting,in_limiter_type,in_FluxType)
     in_U_mat=in_U_mat-in_dt*dF_mat
-    dF_mat=Res(in_U_mat,in_dx,in_order,in_doLimiting,in_limiter_type,in_FluxType,in_isAUSMPlus)
+    dF_mat=Res(in_U_mat,in_dx,in_order,in_doLimiting,in_limiter_type,in_FluxType)
     in_U_mat=in_U_mat-in_dt*dF_mat
     U_new_mat=0.5*(U_old_mat+in_U_mat)
     return U_new_mat
 
-def Res(in_U_cell_mat,in_dx,in_order,in_doLimiting,in_limiter_type,in_FluxType,in_isAUSMPlus):
+def Res(in_U_cell_mat,in_dx,in_order,in_doLimiting,in_limiter_type,in_FluxType):
     # Since t_end=0.2 when the flow interface does not reach both ends, BCs are not important.
     # Fix all
     # Fixed BC for shock tube
@@ -112,10 +112,16 @@ def Res(in_U_cell_mat,in_dx,in_order,in_doLimiting,in_limiter_type,in_FluxType,i
     # BC: Extrapolate flux variables at both ends
     U_face_l_mat=np.append(np.reshape(U_cell_rface_mat[0,:],(1,3)),U_cell_rface_mat,axis=0)
     U_face_r_mat=np.append(U_cell_lface_mat,np.reshape(U_cell_lface_mat[-1,:],(1,3)),axis=0)
+    #  idx_small_u_arr=np.abs(U_face_l_mat[:,1])<1E-12
+    #  U_face_l_mat[idx_small_u_arr,1]=0.0
+    #  idx_small_u_arr=np.abs(U_face_r_mat[:,1])<1E-12
+    #  U_face_r_mat[idx_small_u_arr,1]=0.0
     if(in_FluxType=="ROE"):
         F_face_mat=RoeFlux(U_face_l_mat,U_face_r_mat,EntropyFix)
     elif(in_FluxType=="AUSM"):
-        F_face_mat=AUSMFlux(U_face_l_mat,U_face_r_mat,in_isAUSMPlus)
+        F_face_mat=AUSMFlux(U_face_l_mat,U_face_r_mat)
+    elif(in_FluxType=="AUSMPlus"):
+        F_face_mat=AUSMPlusFlux(U_face_l_mat,U_face_r_mat)
     else:
         from sys import exit
         exit("Not implemented!")
@@ -201,83 +207,126 @@ def RoeFlux(in_U_l_mat,in_U_r_mat,in_EntropyFix):
     F_mat=0.5*(F_l_mat+F_r_mat-tmp_mat)
     return F_mat
 
-def AUSMFlux(in_U_l_mat,in_U_r_mat,in_isPlus):
+# In this version, the definition of a_j+1/2 is not exactly the one in the paper.
+#  def AUSMFlux(in_U_l_mat,in_U_r_mat):
+    #  V_l_mat=U2V_mat(in_U_l_mat)
+    #  V_r_mat=U2V_mat(in_U_r_mat)
+    #  c_l_arr=np.sqrt(GAMMA*V_l_mat[:,2]/V_l_mat[:,0])
+    #  c_r_arr=np.sqrt(GAMMA*V_r_mat[:,2]/V_r_mat[:,0])
+    #  Ma_l_arr=V_l_mat[:,1]/c_l_arr
+    #  Ma_r_arr=V_r_mat[:,1]/c_r_arr
+    #  # P_ma
+    #  alpha=0.0
+    #  P_ma_l_up_arr=np.zeros(Ma_l_arr.shape)
+    #  idx_sup_arr=np.abs(Ma_l_arr)>=1.0
+    #  P_ma_l_up_arr[idx_sup_arr]=0.5*(1+np.sign(Ma_l_arr[idx_sup_arr]))
+    #  idx_sub_arr=np.abs(Ma_l_arr)<1.0
+    #  P_ma_l_up_arr[idx_sub_arr]=0.25*(Ma_l_arr[idx_sub_arr]+1.0)**2*(2.0-Ma_l_arr[idx_sub_arr])\
+        #  +alpha*Ma_l_arr[idx_sub_arr]*(Ma_l_arr[idx_sub_arr]**2-1.0)**2
+    #  P_ma_r_down_arr=np.zeros(Ma_r_arr.shape)
+    #  idx_sup_arr=np.abs(Ma_r_arr)>=1.0
+    #  P_ma_r_down_arr[idx_sup_arr]=0.5*(1-np.sign(Ma_r_arr[idx_sup_arr]))
+    #  idx_sub_arr=np.abs(Ma_r_arr)<1.0
+    #  P_ma_r_down_arr[idx_sub_arr]=0.25*(Ma_r_arr[idx_sub_arr]-1.0)**2*(2.0+Ma_r_arr[idx_sub_arr])\
+        #  -alpha*Ma_r_arr[idx_sub_arr]*(Ma_r_arr[idx_sub_arr]**2-1.0)**2
+    #  P_arr=V_l_mat[:,2]*P_ma_l_up_arr + V_r_mat[:,2]*P_ma_r_down_arr
+    #  P_mat=np.zeros(in_U_l_mat.shape)
+    #  P_mat[:,1]=P_arr
+    #  # M_ma
+    #  beta=0.0
+    #  M_ma_l_up_arr=np.zeros(Ma_l_arr.shape)
+    #  M_ma_r_down_arr=np.zeros(Ma_l_arr.shape)
+    #  idx_sup_arr=np.abs(Ma_l_arr)>1.0
+    #  M_ma_l_up_arr[idx_sup_arr]=0.5*(Ma_l_arr[idx_sup_arr]+np.abs(Ma_l_arr[idx_sup_arr]))
+    #  idx_sub_arr=np.abs(Ma_l_arr)<=1.0
+    #  M_ma_l_up_arr[idx_sub_arr]=0.25*(Ma_l_arr[idx_sub_arr]+1.0)**2\
+        #  +beta*(Ma_l_arr[idx_sub_arr]**2-1.0)**2
+    #  idx_sup_arr=np.abs(Ma_r_arr)>1.0
+    #  M_ma_r_down_arr[idx_sup_arr]=0.5*(Ma_r_arr[idx_sup_arr]-np.abs(Ma_r_arr[idx_sup_arr]))
+    #  idx_sub_arr=np.abs(Ma_r_arr)<=1.0
+    #  M_ma_r_down_arr[idx_sub_arr]=-0.25*(Ma_r_arr[idx_sub_arr]-1.0)**2\
+        #  -beta*(Ma_r_arr[idx_sub_arr]**2-1.0)**2
+    #  M_arr=M_ma_l_up_arr+M_ma_r_down_arr
+    #  F_l_mat=Flux(in_U_l_mat)
+    #  F_r_mat=Flux(in_U_r_mat)
+    #  Phi_l_mat=np.zeros(in_U_l_mat.shape)
+    #  Phi_l_mat[:,0]=V_l_mat[:,0]*c_l_arr
+    #  Phi_l_mat[:,1]=in_U_l_mat[:,1]*c_l_arr
+    #  Phi_l_mat[:,2]=(in_U_l_mat[:,2]+V_l_mat[:,2])*c_l_arr
+    #  Phi_r_mat=np.zeros(in_U_r_mat.shape)
+    #  Phi_r_mat[:,0]=V_r_mat[:,0]*c_r_arr
+    #  Phi_r_mat[:,1]=in_U_r_mat[:,1]*c_r_arr
+    #  Phi_r_mat[:,2]=(in_U_r_mat[:,2]+V_r_mat[:,2])*c_r_arr
+    #  Phi_mat=np.zeros(Phi_l_mat.shape)
+    #  idx_pos_arr=M_arr>=0.0
+    #  Phi_mat[idx_pos_arr,:]=Phi_l_mat[idx_pos_arr,:]
+    #  idx_neg_arr=M_arr<0.0
+    #  Phi_mat[idx_neg_arr,:]=Phi_r_mat[idx_neg_arr,:]
+    #  Fc_mat=np.tile(np.reshape(M_arr,(M_arr.size,1)),(1,3))*Phi_mat
+    #  F_mat=Fc_mat+P_mat
+    #  return F_mat
+
+def AUSMPlusFlux(in_U_l_mat,in_U_r_mat):
+    from numpy import minimum,maximum,abs,sqrt,zeros,sign,tile,reshape
     V_l_mat=U2V_mat(in_U_l_mat)
     V_r_mat=U2V_mat(in_U_r_mat)
-    c_l_arr=np.sqrt(GAMMA*V_l_mat[:,2]/V_l_mat[:,0])
-    c_r_arr=np.sqrt(GAMMA*V_r_mat[:,2]/V_r_mat[:,0])
-    Ma_l_arr=V_l_mat[:,1]/c_l_arr
-    Ma_r_arr=V_r_mat[:,1]/c_r_arr
+    c_l_sonic_arr=(GAMMA*V_l_mat[:,2]/V_l_mat[:,0])/(GAMMA-1)+0.5*V_l_mat[:,1]**2
+    c_l_sonic_arr=sqrt(c_l_sonic_arr*2*(GAMMA-1)/(GAMMA+1))
+    # c_l_sonic_arr will never be 0. So I do not need to worry about abs(V_l_mat[:,1])
+    c_l_tilde_arr=c_l_sonic_arr**2/maximum(c_l_sonic_arr,abs(V_l_mat[:,1]))
+    c_r_sonic_arr=(GAMMA*V_r_mat[:,2]/V_r_mat[:,0])/(GAMMA-1)+0.5*V_r_mat[:,1]**2
+    c_r_sonic_arr=sqrt(c_r_sonic_arr*2*(GAMMA-1)/(GAMMA+1))
+    c_r_tilde_arr=c_r_sonic_arr**2/maximum(c_r_sonic_arr,abs(V_r_mat[:,1]))
+    c_arr=minimum(c_l_tilde_arr,c_r_tilde_arr)
+    Ma_l_arr=V_l_mat[:,1]/c_arr
+    Ma_r_arr=V_r_mat[:,1]/c_arr
     # P_ma
-    if(in_isPlus):
-        alpha=0.1875
-    else:
-        alpha=0.0
-    P_ma_l_up_arr=np.zeros(Ma_l_arr.shape)
-    idx_sup_arr=np.abs(Ma_l_arr)>=1.0
-    P_ma_l_up_arr[idx_sup_arr]=0.5*(1+np.sign(Ma_l_arr[idx_sup_arr]))
-    idx_sub_arr=np.abs(Ma_l_arr)<1.0
+    alpha=0.1875
+    P_ma_l_up_arr=zeros(Ma_l_arr.shape)
+    idx_sup_arr=abs(Ma_l_arr)>=1.0
+    P_ma_l_up_arr[idx_sup_arr]=0.5*(1+sign(Ma_l_arr[idx_sup_arr]))
+    idx_sub_arr=abs(Ma_l_arr)<1.0
     P_ma_l_up_arr[idx_sub_arr]=0.25*(Ma_l_arr[idx_sub_arr]+1.0)**2*(2.0-Ma_l_arr[idx_sub_arr])\
         +alpha*Ma_l_arr[idx_sub_arr]*(Ma_l_arr[idx_sub_arr]**2-1.0)**2
-    P_ma_r_down_arr=np.zeros(Ma_r_arr.shape)
-    idx_sup_arr=np.abs(Ma_r_arr)>=1.0
-    P_ma_r_down_arr[idx_sup_arr]=0.5*(1-np.sign(Ma_r_arr[idx_sup_arr]))
-    idx_sub_arr=np.abs(Ma_r_arr)<1.0
+    P_ma_r_down_arr=zeros(Ma_r_arr.shape)
+    idx_sup_arr=abs(Ma_r_arr)>=1.0
+    P_ma_r_down_arr[idx_sup_arr]=0.5*(1-sign(Ma_r_arr[idx_sup_arr]))
+    idx_sub_arr=abs(Ma_r_arr)<1.0
     P_ma_r_down_arr[idx_sub_arr]=0.25*(Ma_r_arr[idx_sub_arr]-1.0)**2*(2.0+Ma_r_arr[idx_sub_arr])\
         -alpha*Ma_r_arr[idx_sub_arr]*(Ma_r_arr[idx_sub_arr]**2-1.0)**2
     P_arr=V_l_mat[:,2]*P_ma_l_up_arr + V_r_mat[:,2]*P_ma_r_down_arr
-    P_mat=np.zeros(in_U_l_mat.shape)
+    P_mat=zeros(in_U_l_mat.shape)
     P_mat[:,1]=P_arr
     # M_ma
-    if(in_isPlus):
-        beta=0.125
-    else:
-        beta=0.0
-    M_ma_l_up_arr=np.zeros(Ma_l_arr.shape)
-    M_ma_r_down_arr=np.zeros(Ma_l_arr.shape)
-    idx_sup_arr=np.abs(Ma_l_arr)>1.0
-    M_ma_l_up_arr[idx_sup_arr]=0.5*(Ma_l_arr[idx_sup_arr]+np.abs(Ma_l_arr[idx_sup_arr]))
-    idx_sub_arr=np.abs(Ma_l_arr)<=1.0
+    beta=0.125
+    M_ma_l_up_arr=zeros(Ma_l_arr.shape)
+    M_ma_r_down_arr=zeros(Ma_l_arr.shape)
+    idx_sup_arr=abs(Ma_l_arr)>1.0
+    M_ma_l_up_arr[idx_sup_arr]=0.5*(Ma_l_arr[idx_sup_arr]+abs(Ma_l_arr[idx_sup_arr]))
+    idx_sub_arr=abs(Ma_l_arr)<=1.0
     M_ma_l_up_arr[idx_sub_arr]=0.25*(Ma_l_arr[idx_sub_arr]+1.0)**2\
         +beta*(Ma_l_arr[idx_sub_arr]**2-1.0)**2
-    idx_sup_arr=np.abs(Ma_r_arr)>1.0
-    M_ma_r_down_arr[idx_sup_arr]=0.5*(Ma_r_arr[idx_sup_arr]-np.abs(Ma_r_arr[idx_sup_arr]))
-    idx_sub_arr=np.abs(Ma_r_arr)<=1.0
+    idx_sup_arr=abs(Ma_r_arr)>1.0
+    M_ma_r_down_arr[idx_sup_arr]=0.5*(Ma_r_arr[idx_sup_arr]-abs(Ma_r_arr[idx_sup_arr]))
+    idx_sub_arr=abs(Ma_r_arr)<=1.0
     M_ma_r_down_arr[idx_sub_arr]=-0.25*(Ma_r_arr[idx_sub_arr]-1.0)**2\
         -beta*(Ma_r_arr[idx_sub_arr]**2-1.0)**2
     M_arr=M_ma_l_up_arr+M_ma_r_down_arr
+    M_ma_up_arr=0.5*(M_arr+abs(M_arr))
+    M_ma_down_arr=0.5*(M_arr-abs(M_arr))
     F_l_mat=Flux(in_U_l_mat)
     F_r_mat=Flux(in_U_r_mat)
-    Phi_l_mat=np.zeros(in_U_l_mat.shape)
-    if(in_isPlus):
-        Phi_l_mat[:,0]=V_l_mat[:,0]
-        Phi_l_mat[:,1]=in_U_l_mat[:,1]
-        Phi_l_mat[:,2]=(in_U_l_mat[:,2]+V_l_mat[:,2])
-    else:
-        Phi_l_mat[:,0]=V_l_mat[:,0]*c_l_arr
-        Phi_l_mat[:,1]=in_U_l_mat[:,1]*c_l_arr
-        Phi_l_mat[:,2]=(in_U_l_mat[:,2]+V_l_mat[:,2])*c_l_arr
-    Phi_r_mat=np.zeros(in_U_r_mat.shape)
-    if(in_isPlus):
-        Phi_r_mat[:,0]=V_r_mat[:,0]
-        Phi_r_mat[:,1]=in_U_r_mat[:,1]
-        Phi_r_mat[:,2]=(in_U_r_mat[:,2]+V_r_mat[:,2])
-    else:
-        Phi_r_mat[:,0]=V_r_mat[:,0]*c_r_arr
-        Phi_r_mat[:,1]=in_U_r_mat[:,1]*c_r_arr
-        Phi_r_mat[:,2]=(in_U_r_mat[:,2]+V_r_mat[:,2])*c_r_arr
-    Phi_mat=np.zeros(Phi_l_mat.shape)
-    idx_pos_arr=M_arr>=0.0
-    Phi_mat[idx_pos_arr,:]=Phi_l_mat[idx_pos_arr,:]
-    idx_neg_arr=M_arr<0.0
-    Phi_mat[idx_neg_arr,:]=Phi_r_mat[idx_neg_arr,:]
-    if(in_isPlus):
-        c_arr=np.zeros(c_l_arr.shape)
-        c_arr[idx_pos_arr]=c_l_arr[idx_pos_arr]
-        c_arr[idx_neg_arr]=c_r_arr[idx_neg_arr]
-        Fc_mat=np.tile(np.reshape(M_arr,(M_arr.size,1)),(1,3))*np.tile(np.reshape(c_arr,(c_arr.size,1)),(1,3))*Phi_mat
-    else:
-        Fc_mat=np.tile(np.reshape(M_arr,(M_arr.size,1)),(1,3))*Phi_mat
+    Phi_l_mat=zeros(in_U_l_mat.shape)
+    Phi_l_mat[:,0]=V_l_mat[:,0]
+    Phi_l_mat[:,1]=in_U_l_mat[:,1]
+    Phi_l_mat[:,2]=(in_U_l_mat[:,2]+V_l_mat[:,2])
+    Phi_r_mat=zeros(in_U_r_mat.shape)
+    Phi_r_mat[:,0]=V_r_mat[:,0]
+    Phi_r_mat[:,1]=in_U_r_mat[:,1]
+    Phi_r_mat[:,2]=(in_U_r_mat[:,2]+V_r_mat[:,2])
+    Phi_mat=tile(reshape(M_ma_up_arr,(M_ma_up_arr.size,1)),(1,3))*Phi_l_mat \
+           +tile(reshape(M_ma_down_arr,(M_ma_down_arr.size,1)),(1,3))*Phi_r_mat
+    Fc_mat=tile(reshape(c_arr,(c_arr.size,1)),(1,3))*Phi_mat
     F_mat=Fc_mat+P_mat
     return F_mat
 
@@ -320,12 +369,12 @@ if __name__ == '__main__':
         exit("Not implemented!")
     U_cell_mat=IC(x_cell_arr,IC_type)
     dx=x_edge_arr[1]-x_edge_arr[0]
-    cfl=0.9
+    cfl=0.1
     order=2
     #  FluxType="ROE"
-    EntropyFix=1
-    FluxType="AUSM"
-    isAUSMPlus=0
+    #  EntropyFix=1
+    #  FluxType="AUSM"
+    FluxType="AUSMPlus"
     doLimiting=1
     limiter_type="MINMOD"
     plot_progress=False
@@ -357,7 +406,7 @@ if __name__ == '__main__':
             dt=end_time-time
         time+=dt
         #  U_cell_mat=RK1(U_cell_mat,dt,dx)
-        U_cell_mat=RK2(U_cell_mat,dt,dx,order,doLimiting,limiter_type,FluxType,isAUSMPlus)
+        U_cell_mat=RK2(U_cell_mat,dt,dx,order,doLimiting,limiter_type,FluxType)
     V_cell_mat=U2V_mat(U_cell_mat)
     data_save_mat=np.zeros((x_cell_arr.size,4))
     data_save_mat[:,0]=x_cell_arr
